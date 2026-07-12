@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>متابع الشهر - Habit Tracker</title>
+<title>متابع الشهر</title>
 <style>
   :root{
     --gold:#e8c46b;
@@ -96,7 +96,7 @@
   .table-wrap{
     overflow-x:auto;
     margin:0 auto 30px;
-    max-width:1300px;
+    max-width:100%;
     padding:0 var(--space-md);
   }
   .table-legend{
@@ -131,6 +131,19 @@
     top:0;
     z-index:2;
   }
+  thead th .day-name,
+  thead th .day-num{
+    display:block;
+    line-height:1.2;
+  }
+  thead th .day-name{
+    font-size:0.7rem;
+    font-weight:600;
+    opacity:0.85;
+  }
+  thead th .day-num{
+    font-size:0.9rem;
+  }
   thead th.habit-col{
     z-index:3;
   }
@@ -160,6 +173,18 @@
   .mark-x{color:var(--red);font-weight:bold;}
   .mark-dash{color:var(--blue);font-weight:bold;}
   .points-row td{background:#fff3d6;font-weight:bold;}
+  th.friday-col,
+  td.friday-col,
+  .day-cell.friday-col,
+  .points-row td.friday-col{
+    background:#e8e8e8;
+  }
+  .day-cell.friday-col:hover{background:#dcdcdc;}
+  .day-cell.friday-col.today-col,
+  .points-row td.friday-col.today-col{
+    background:#e0e0e0;
+  }
+  th.friday-col.today-col{background:#d8d8d8;}
   .cat-group-row td{
     background:#e8f0e4;
     text-align:right;
@@ -182,7 +207,20 @@
     padding:15px;
     box-shadow:var(--shadow);
   }
-  .weekly-card h3{margin-top:0;color:var(--text-dark);}
+  .weekly-card h3{
+    margin-top:0;
+    color:var(--text-dark);
+    display:flex;
+    flex-wrap:wrap;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:8px;
+  }
+  .week-numbers{
+    font-weight:600;
+    color:var(--green);
+    font-size:0.9rem;
+  }
   textarea{
     width:100%;
     min-height:90px;
@@ -358,10 +396,24 @@
     transition:width 0.2s;
   }
   .habit-progress-pct{
-    min-width:70px;
+    min-width:55px;
     font-size:0.85rem;
     font-weight:bold;
     text-align:left;
+  }
+  .habit-progress-pct-box{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-width:3.2rem;
+    padding:4px 8px;
+    border-radius:6px;
+    border:1px solid var(--border);
+    background:#fffaf0;
+    color:var(--green);
+    font-size:0.85rem;
+    font-weight:bold;
+    box-shadow:0 1px 2px rgba(0,0,0,0.06);
   }
   .footer-note{
     text-align:center;
@@ -445,6 +497,99 @@
     opacity:1;
     transform:translateX(-50%) translateY(0);
   }
+  .celebration-overlay{
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    z-index:300;
+    overflow:hidden;
+    display:none;
+  }
+  .celebration-overlay.is-show{display:block;}
+  .celebration-banner{
+    position:absolute;
+    top:18%;
+    left:50%;
+    transform:translateX(-50%) scale(0.6);
+    background:var(--green);
+    color:#fff;
+    padding:14px 28px;
+    border-radius:16px;
+    font-size:1.15rem;
+    font-weight:bold;
+    box-shadow:0 8px 28px rgba(0,0,0,0.25);
+    opacity:0;
+    animation:celebrate-banner 2.4s ease forwards;
+    max-width:min(92vw, 420px);
+    text-align:center;
+    line-height:1.45;
+  }
+  .confetti-piece{
+    position:absolute;
+    top:-12px;
+    width:10px;
+    height:14px;
+    border-radius:2px;
+    opacity:0.95;
+    animation:confetti-fall linear forwards;
+  }
+  @keyframes celebrate-banner{
+    0%{opacity:0;transform:translateX(-50%) scale(0.5) translateY(20px);}
+    15%{opacity:1;transform:translateX(-50%) scale(1.08) translateY(0);}
+    30%{transform:translateX(-50%) scale(1);}
+    75%{opacity:1;transform:translateX(-50%) scale(1);}
+    100%{opacity:0;transform:translateX(-50%) scale(0.95) translateY(-10px);}
+  }
+  @keyframes confetti-fall{
+    0%{transform:translate3d(0,0,0) rotate(0deg);opacity:1;}
+    100%{transform:translate3d(var(--drift),110vh,0) rotate(720deg);opacity:0;}
+  }
+  @media (prefers-reduced-motion: reduce){
+    .celebration-banner,
+    .confetti-piece{animation:none;opacity:0;}
+  }
+  @media(min-width:901px){
+    .table-wrap{
+      overflow:visible;
+      max-width:none;
+      width:100%;
+      padding:0 12px;
+    }
+    table{
+      min-width:0;
+      table-layout:fixed;
+      width:100%;
+    }
+    th, td{
+      padding:4px 1px;
+      font-size:0.75rem;
+    }
+    .habit-cell, th.habit-col{
+      min-width:0;
+      width:9.5rem;
+      padding:4px 6px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      position:sticky;
+      right:0;
+    }
+    .day-cell{
+      min-width:0;
+      width:auto;
+      font-size:0.95rem;
+      padding:4px 0;
+    }
+    thead th:not(.habit-col){
+      width:auto;
+      padding:4px 0;
+    }
+    thead th .day-name{font-size:0.65rem;}
+    thead th .day-num{font-size:0.8rem;}
+    .weekly-section{
+      max-width:none;
+    }
+  }
   @media(max-width:700px){
     .weekly-section.is-visible{grid-template-columns:1fr;}
     .header h1{font-size:1.6rem;}
@@ -456,25 +601,25 @@
 <body>
 
 <div class="header">
-  <h1>📅 متابع الشهر</h1>
+  <h1 id="appTitle">📅 متابع الشهر</h1>
 </div>
 
 <div class="top-bar">
-  <button class="view-btn primary" id="showDayBtn" type="button">Day view</button>
-  <button class="view-btn" id="showMonthBtn" type="button">Month view</button>
-  <button type="button" id="settingsBtn">Settings</button>
+  <button class="view-btn primary" id="showDayBtn" type="button">عرض اليوم</button>
+  <button class="view-btn" id="showMonthBtn" type="button">عرض الشهر</button>
+  <button type="button" id="settingsBtn">الإعدادات</button>
 </div>
 
 <div class="day-view" id="dayView">
   <div class="day-view-header">
-    <button type="button" id="prevDayBtn">◀ Previous day</button>
+    <button type="button" id="prevDayBtn"> اليوم السابق</button>
     <h2 id="dayViewTitle"></h2>
-    <button type="button" id="nextDayBtn">Next day ▶</button>
+    <button type="button" id="nextDayBtn">اليوم التالي </button>
   </div>
   <div class="day-picker-row">
     <label for="daySelect">اختر يومًا آخر: </label>
     <select id="daySelect"></select>
-    <button type="button" id="goTodayBtn">Today</button>
+    <button type="button" id="goTodayBtn">اليوم</button>
   </div>
   <div class="day-habit-list" id="dayHabitList"></div>
   <div class="day-total" id="dayTotal"></div>
@@ -483,10 +628,8 @@
 <div class="month-panel" id="monthPanel">
   <div class="table-wrap">
     <div class="table-legend" aria-hidden="true">
-      <span class="mark-check">✓ Done</span>
-      <span class="mark-x">✗ Missed</span>
-      <span class="mark-dash">− Skip</span>
-      <span>(empty = unset)</span>
+      <span class="mark-check">✓ تم</span>
+      <span>(فارغ = غير محدد)</span>
     </div>
     <table id="trackerTable">
       <thead>
@@ -507,16 +650,16 @@
 </div>
 
 <div class="footer-note" id="footerNote">
-  في عرض اليوم استخدم الأزرار. في عرض الشهر اضغط على الخلية للتبديل بين ✓ و✗ و−. تُحفظ بياناتك تلقائيًا محليًا لكل شهر على حدة.
+  في عرض اليوم استخدم الزر. في عرض الشهر اضغط على الخلية للتبديل بين ✓ والفارغ. تُحفظ بياناتك تلقائيًا محليًا لكل شهر على حدة.
 </div>
 
 <div class="modal-overlay" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
   <div class="modal">
-    <button type="button" class="modal-close" id="closeSettingsBtn" aria-label="Close">×</button>
-    <h2 id="settingsTitle">Settings</h2>
+    <button type="button" class="modal-close" id="closeSettingsBtn" aria-label="إغلاق">×</button>
+    <h2 id="settingsTitle">الإعدادات</h2>
 
     <div class="modal-section">
-      <h3>Period</h3>
+      <h3>الفترة</h3>
       <div class="modal-row">
         <label>الشهر:
           <select id="monthSelect"></select>
@@ -524,28 +667,28 @@
         <label>السنة:
           <input type="number" id="yearInput" value="2026" min="2000" max="2100" style="width:90px;">
         </label>
-        <button class="primary" type="button" id="loadBtn">Load</button>
-        <button class="danger" type="button" id="resetBtn">Clear month data</button>
+        <button class="primary" type="button" id="loadBtn">تحميل</button>
+        <button class="danger" type="button" id="resetBtn">مسح بيانات الشهر</button>
       </div>
     </div>
 
     <div class="modal-section">
-      <h3>Data</h3>
+      <h3>البيانات</h3>
       <div class="modal-row">
-        <button type="button" id="exportBtn">Export JSON</button>
-        <button type="button" id="importBtn">Import JSON</button>
+        <button type="button" id="exportBtn">تصدير JSON</button>
+        <button type="button" id="importBtn">استيراد JSON</button>
         <input type="file" id="importFile" accept=".json" style="display:none;">
       </div>
     </div>
 
     <div class="modal-section">
-      <h3>Habits</h3>
+      <h3>العادات</h3>
       <div class="habit-manager">
         <div class="row">
           <input type="text" id="newHabitName" placeholder="اسم عادة جديدة" style="flex:2;min-width:120px;">
           <input type="text" id="newHabitCat" placeholder="التصنيف (مثال: الصباح)" style="flex:1;min-width:100px;">
           <input type="text" id="newHabitIcon" placeholder="إيموجي" style="width:70px;">
-          <button class="primary" type="button" id="addHabitBtn">Add habit</button>
+          <button class="primary" type="button" id="addHabitBtn">إضافة عادة</button>
         </div>
         <div class="habit-list-manage" id="habitManageList"></div>
       </div>
@@ -554,9 +697,13 @@
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="celebration-overlay" id="celebrationOverlay" aria-hidden="true">
+  <div class="celebration-banner" id="celebrationBanner">🎉 أحسنت! ١٠٠٪</div>
+</div>
 
 <script>
 const MONTH_NAMES = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
+const DAY_NAMES = ["أحد","إثنين","ثلاثاء","أربعاء","خميس","جمعة","سبت"];
 
 const DEFAULT_HABITS = [
   {name:"تنظيف", cat:"الصباح", icon:"🧹"},
@@ -574,21 +721,182 @@ const DEFAULT_HABITS = [
   {name:"صلوات", cat:"قبل النوم", icon:"🕌", points:0}
 ];
 
-const MARK_CYCLE = ["", "check", "x", "dash"];
-const MARK_SYMBOL = {"":"", "check":"✓", "x":"✗", "dash":"−"};
-const MARK_CLASS = {"":"", "check":"mark-check", "x":"mark-x", "dash":"mark-dash"};
-const MARK_LABEL = {"":"unset", "check":"Done", "x":"Missed", "dash":"Skip"};
+const MARK_SYMBOL = {"":"", "check":"✓"};
+const MARK_CLASS = {"":"", "check":"mark-check"};
+const MARK_LABEL = {"":"غير محدد", "check":"تم"};
+
+function normalizeMark(mark){
+  return mark === "check" ? "check" : "";
+}
 
 function habitPointValue(habit){
   return habit.points ?? 10;
 }
 
 function pointsForMark(habit, mark){
-  return mark === "check" ? habitPointValue(habit) : 0;
+  return normalizeMark(mark) === "check" ? habitPointValue(habit) : 0;
 }
 
 function maxDayPoints(){
   return state.habits.reduce((sum, h) => sum + habitPointValue(h), 0);
+}
+
+function getDayPoints(day){
+  let total = 0;
+  state.habits.forEach((h, hIdx) => {
+    total += pointsForMark(h, state.marks[`${hIdx}_${day}`] || "");
+  });
+  const max = maxDayPoints();
+  return { total, max, perfect: max > 0 && total >= max };
+}
+
+const CELEBRATION_MESSAGES = [
+  "أحسنت! أكملت اليوم ١٠٠٪",
+  "رائع جدًا! يوم مكتمل",
+  "فخر بك، أنجزت كل شيء اليوم",
+  "ممتاز! استمر على هذا الإيقاع",
+  "أنت بطل اليوم",
+  "إنجاز كامل يستحق الاحتفال",
+  "يوم مثالي، أحسنت صنعًا",
+  "كل العادات تمت بنجاح",
+  "هذا هو الالتزام الحقيقي",
+  "مبروك! يوم بلا تقصير",
+  "أداؤك اليوم يلهم",
+  "قمة التركيز والإنجاز",
+  "أكملت المهمة بامتياز",
+  "يوم ذهبي في سجلّك",
+  "أنت على الطريق الصحيح",
+  "انتصار صغير اليوم يصنع عادة كبيرة",
+  "تهانينا على الإكمال الكامل",
+  "اليوم كان لك بالكامل",
+  "قوي، منظم، ومنجز",
+  "أحسنت الاختيار والاستمرار",
+  "يوم يستحق نجمة ذهبية",
+  "ما شاء الله، إنجاز تام",
+  "كل نقطة جمعتها بجدارة",
+  "أكملت السباق حتى النهاية",
+  "هذا انضباط يستحق التقدير",
+  "يوم مكتمل يعني ثقة أعلى",
+  "أبهرت نفسك اليوم",
+  "لا شيء ناقص... رائع!",
+  "من القمة إلى القمة",
+  "نجاح اليوم يبدأ من هنا",
+  "أنت تثبت أنك قادر",
+  "عاداتك تشكرك اليوم",
+  "يوم نظيف بلا فجوات",
+  "أحسنت المداومة",
+  "هذا هو شكل التميز",
+  "اكتمل الدائرة بنجاح",
+  "نتيجة مئة بالمئة تستحق ابتسامة",
+  "اليوم فزت على التسويف",
+  "إرادة حديدية ظهرت اليوم",
+  "كل عادة نالت حقها",
+  "يوم يُكتب بخط عريض",
+  "تقدّم واضح وملموس",
+  "أنت تصنع فرقًا يوميًا",
+  "بارك الله في مثابرتك",
+  "يوم كامل يعني راحة بال",
+  "أداء مشرف حتى آخر عادة",
+  "هذا مستوى يُحتذى به",
+  "أكملت اليوم كالمحترفين",
+  "فرحة الإنجاز كاملة",
+  "لا اختصارات... فقط إنجاز",
+  "أنت أقرب لهدفك الآن",
+  "يوم يستحق التصفيق",
+  "التزم فنجحت",
+  "أحسنت إدارة وقتك وطاقتك",
+  "كل خانة مشرقة اليوم",
+  "هذا انتصار شخصي جميل",
+  "يوم من ذهب في متابعتك",
+  "أثبتّ الانضباط اليوم",
+  "مبروك الإكمال التام",
+  "عادات قوية تبدأ بأيام كهذا",
+  "اليوم كان نسخة مثالية منك",
+  "أنت تبني نسخة أفضل من نفسك",
+  "إنجاز يستحق لحظة فخر",
+  "ما قصّرت في شيء اليوم",
+  "هذا إيقاع الفائزين",
+  "يوم مكتمل = ثقة مكتملة",
+  "رائع! استمر غدًا بنفس القوة",
+  "كل علامة ✓ قصة نجاح صغيرة",
+  "أغلقت اليوم على خير",
+  "أداؤك اليوم يرفع المعنويات",
+  "يوم بلا أعذار",
+  "هذا هو الوفاء بالعهد مع نفسك",
+  "أكملت فاستحققت الاحتفال",
+  "من القلب: أحسنت جدًا",
+  "يوم يُضاف لسلسلة انتصاراتك",
+  "قمة الإتقان اليومي",
+  "كل عادة تمت كما يجب",
+  "أنت تصنع عادة الفوز",
+  "نجاح صامت وقوي",
+  "اليوم أثبت حضورك لنفسك",
+  "نتيجة كاملة تليق بك",
+  "لا يوجد أفضل من ١٠٠٪",
+  "يوم مكتمل يضيء الأسبوع",
+  "أحسنت الالتزام حتى النهاية",
+  "هذا انضباط يبني المستقبل",
+  "فرحة صغيرة... أثر كبير",
+  "أكملت اليوم بثقة",
+  "أنت تستحق هذا الشعور الجميل",
+  "يوم مثالي في سجلّ الإنجاز",
+  "كل خطوة اليوم كانت محسوبة",
+  "مبروك على المثابرة",
+  "أبهجت يومك بالإنجاز",
+  "هذا شكل الجدية الهادئة",
+  "يوم كامل بلا نقصان",
+  "أنت في أفضل نسخة اليوم",
+  "أحسنت إدارة أولوياتك",
+  "نجاح اليوم وقود لغد أفضل",
+  "أكملت فخورًا بما أنجزت",
+  "يوم يُروى بفخر",
+  "تهانينا الحارة على ١٠٠٪"
+];
+
+function randomCelebrationMessage(){
+  return CELEBRATION_MESSAGES[Math.floor(Math.random() * CELEBRATION_MESSAGES.length)];
+}
+
+function playCelebration(){
+  const message = randomCelebrationMessage();
+  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+    showToast(`🎉 ${message}`);
+    return;
+  }
+  const overlay = document.getElementById('celebrationOverlay');
+  const banner = document.getElementById('celebrationBanner');
+  if(!overlay || !banner) return;
+
+  banner.textContent = `🎉 ${message}`;
+  overlay.querySelectorAll('.confetti-piece').forEach(el => el.remove());
+  const colors = ['#4a7c3f','#e8c46b','#d9534f','#3a6fb5','#8fbf7a','#ff8a65','#ab47bc'];
+  for(let i = 0; i < 48; i++){
+    const piece = document.createElement('span');
+    piece.className = 'confetti-piece';
+    piece.style.left = `${Math.random() * 100}%`;
+    piece.style.background = colors[i % colors.length];
+    piece.style.animationDuration = `${1.6 + Math.random() * 1.4}s`;
+    piece.style.animationDelay = `${Math.random() * 0.35}s`;
+    piece.style.setProperty('--drift', `${(Math.random() * 160) - 80}px`);
+    piece.style.width = `${6 + Math.random() * 8}px`;
+    piece.style.height = `${8 + Math.random() * 10}px`;
+    overlay.appendChild(piece);
+  }
+
+  banner.style.animation = 'none';
+  void banner.offsetWidth;
+  banner.style.animation = '';
+  overlay.classList.add('is-show');
+  clearTimeout(playCelebration._t);
+  playCelebration._t = setTimeout(() => {
+    overlay.classList.remove('is-show');
+    overlay.querySelectorAll('.confetti-piece').forEach(el => el.remove());
+  }, 5000);
+}
+
+function celebrateIfNewlyPerfect(day, wasPerfect){
+  if(wasPerfect) return;
+  if(getDayPoints(day).perfect) playCelebration();
 }
 
 function syncHabitPointsFromDefaults(habits){
@@ -642,8 +950,20 @@ function escapeAttr(str){
     .replace(/>/g, "&gt;");
 }
 
+function toArabicDigits(value){
+  return String(value).replace(/[0-9]/g, d => "٠١٢٣٤٥٦٧٨٩"[d]);
+}
+
+function getWeekOfYear(date){
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+}
+
 function deleteHabitAt(idx){
-  if(!confirm('Delete this habit?')) return;
+  if(!confirm('حذف هذه العادة؟')) return;
   state.habits.splice(idx, 1);
   const newMarks = {};
   Object.keys(state.marks).forEach(k => {
@@ -685,6 +1005,7 @@ function saveState(){
 }
 
 function renderAll(){
+  updateAppTitle();
   if(viewMode === "month"){
     renderTable();
     renderWeekly(false);
@@ -693,6 +1014,14 @@ function renderAll(){
     renderDayView();
   }
   renderHabitManageList();
+}
+
+function updateAppTitle(){
+  const {year, month} = getCurrentYearMonth();
+  const title = document.getElementById('appTitle');
+  if(title){
+    title.textContent = `📅 متابع الشهر · ${MONTH_NAMES[month]} ${toArabicDigits(year)}`;
+  }
 }
 
 function setViewMode(mode){
@@ -714,26 +1043,30 @@ function setViewMode(mode){
 }
 
 function applyMarkToCell(td, key, mark){
+  mark = normalizeMark(mark);
   td.className = "day-cell " + (MARK_CLASS[mark] || "");
+  if(td.dataset.friday === "1") td.classList.add('friday-col');
   if(td.classList.contains('today-col') || td.dataset.today === "1"){
     td.classList.add('today-col');
   }
   td.textContent = MARK_SYMBOL[mark] || "";
-  const habitName = state.habits[parseInt(key.split('_')[0], 10)]?.name || "habit";
+  const habitName = state.habits[parseInt(key.split('_')[0], 10)]?.name || "عادة";
   const day = key.split('_')[1];
-  td.setAttribute('aria-label', `${habitName}, day ${day}: ${MARK_LABEL[mark] || 'unset'}`);
+  td.setAttribute('aria-label', `${habitName}، يوم ${toArabicDigits(day)}: ${MARK_LABEL[mark] || 'غير محدد'}`);
 }
 
 function cycleMark(key, td){
-  const current = state.marks[key] || "";
-  const idx = MARK_CYCLE.indexOf(current);
-  const next = MARK_CYCLE[(idx + 1) % MARK_CYCLE.length];
+  const day = parseInt(key.split('_')[1], 10);
+  const wasPerfect = getDayPoints(day).perfect;
+  const current = normalizeMark(state.marks[key] || "");
+  const next = current === "check" ? "" : "check";
   state.marks[key] = next;
   applyMarkToCell(td, key, next);
   saveState();
   updatePointsRow();
   updateWeeklyPoints();
   if(viewMode === "month") renderMonthSummary();
+  celebrateIfNewlyPerfect(day, wasPerfect);
 }
 
 function updatePointsRow(){
@@ -749,7 +1082,7 @@ function updatePointsRow(){
     state.habits.forEach((h, hIdx) => {
       total += pointsForMark(h, state.marks[`${hIdx}_${d}`] || "");
     });
-    td.textContent = maxDay ? `${total}/${maxDay}` : total;
+    td.textContent = maxDay ? toArabicDigits(`${maxDay}/${total}`) : toArabicDigits(total);
   });
 }
 
@@ -770,7 +1103,9 @@ function renderTable(){
 
   for(let d = 1; d <= nDays; d++){
     const th = document.createElement('th');
-    th.textContent = d;
+    const weekday = new Date(year, month, d).getDay();
+    th.innerHTML = `<span class="day-name">${DAY_NAMES[weekday]}</span><span class="day-num">${toArabicDigits(d)}</span>`;
+    if(weekday === 5) th.classList.add('friday-col');
     if(d === todayDay) th.classList.add('today-col');
     headerRow.appendChild(th);
   }
@@ -802,6 +1137,10 @@ function renderTable(){
       td.setAttribute('role', 'button');
       const key = `${hIdx}_${d}`;
       const mark = state.marks[key] || "";
+      if(new Date(year, month, d).getDay() === 5){
+        td.classList.add('friday-col');
+        td.dataset.friday = "1";
+      }
       if(d === todayDay){
         td.classList.add('today-col');
         td.dataset.today = "1";
@@ -834,7 +1173,8 @@ function renderTable(){
     state.habits.forEach((h, hIdx) => {
       total += pointsForMark(h, state.marks[`${hIdx}_${d}`] || "");
     });
-    td.textContent = maxDay ? `${total}/${maxDay}` : total;
+    td.textContent = maxDay ? toArabicDigits(`${maxDay}/${total}`) : toArabicDigits(total);
+    if(new Date(year, month, d).getDay() === 5) td.classList.add('friday-col');
     if(d === todayDay) td.classList.add('today-col');
     pointsRow.appendChild(td);
   }
@@ -855,7 +1195,7 @@ function updateWeeklyPoints(){
       });
     }
     const badge = document.querySelector(`[data-week-points="${w}"]`);
-    if(badge) badge.textContent = `إجمالي النقاط: ${weekPoints}`;
+    if(badge) badge.textContent = `إجمالي النقاط: ${toArabicDigits(weekPoints)}`;
   }
 }
 
@@ -885,11 +1225,16 @@ function renderWeekly(forceRebuild){
         weekPoints += pointsForMark(h, state.marks[`${hIdx}_${d}`] || "");
       });
     }
+    const monthWeek = w + 1;
+    const yearWeek = getWeekOfYear(new Date(year, month, startDay));
     const card = document.createElement('div');
     card.className = "weekly-card";
     card.innerHTML = `
-      <h3>أيام ${startDay}–${endDay}</h3>
-      <div class="week-points"><span data-week-points="${w}">إجمالي النقاط: ${weekPoints}</span></div>
+      <h3>
+        أيام ${toArabicDigits(startDay)}–${toArabicDigits(endDay)}
+        <span class="week-numbers">الأسبوع ${toArabicDigits(monthWeek)} من ${MONTH_NAMES[month]} - الأسبوع ${toArabicDigits(yearWeek)} من سنة ${toArabicDigits(year)}</span>
+      </h3>
+      <div class="week-points"><span data-week-points="${w}">إجمالي النقاط: ${toArabicDigits(weekPoints)}</span></div>
       <label style="display:block;margin-top:10px;font-weight:bold;">تخطيط الأسبوع:</label>
       <textarea data-week="${w}" placeholder="اكتب خطتك لهذا الأسبوع..."></textarea>
     `;
@@ -918,7 +1263,7 @@ function populateDaySelect(year, month, nDays){
   for(let d = 1; d <= nDays; d++){
     const opt = document.createElement('option');
     opt.value = d;
-    opt.textContent = `${d} ${MONTH_NAMES[month]}`;
+    opt.textContent = `${toArabicDigits(d)} ${MONTH_NAMES[month]}`;
     if(d === currentDay) opt.selected = true;
     sel.appendChild(opt);
   }
@@ -961,10 +1306,10 @@ function renderHabitManageList(){
     const item = document.createElement('div');
     item.className = "habit-manage-item";
     item.innerHTML = `
-      <input type="text" class="icon-input" data-field="icon" data-idx="${hIdx}" value="${escapeAttr(habit.icon||"")}" title="Emoji">
+      <input type="text" class="icon-input" data-field="icon" data-idx="${hIdx}" value="${escapeAttr(habit.icon||"")}" title="إيموجي">
       <input type="text" data-field="name" data-idx="${hIdx}" value="${escapeAttr(habit.name||"")}" placeholder="اسم العادة">
       <input type="text" data-field="cat" data-idx="${hIdx}" value="${escapeAttr(habit.cat||"")}" placeholder="التصنيف" style="flex:0.8;">
-      <button type="button" class="danger" data-del="${hIdx}">Delete</button>
+      <button type="button" class="danger" data-del="${hIdx}">حذف</button>
     `;
     list.appendChild(item);
   });
@@ -993,7 +1338,9 @@ function renderDayView(){
   if(currentDay > nDays) currentDay = nDays;
   if(currentDay < 1) currentDay = 1;
 
-  document.getElementById('dayViewTitle').textContent = `${currentDay} ${MONTH_NAMES[month]} ${year}`;
+  const weekday = new Date(year, month, currentDay).getDay();
+  document.getElementById('dayViewTitle').textContent =
+    `${DAY_NAMES[weekday]} - ${toArabicDigits(currentDay)} ${MONTH_NAMES[month]} ${toArabicDigits(year)}`;
   populateDaySelect(year, month, nDays);
 
   const list = document.getElementById('dayHabitList');
@@ -1015,7 +1362,7 @@ function renderDayView(){
     }
 
     const key = `${hIdx}_${currentDay}`;
-    const mark = state.marks[key] || "";
+    const mark = normalizeMark(state.marks[key] || "");
     dayTotal += pointsForMark(habit, mark);
 
     const item = document.createElement('div');
@@ -1023,9 +1370,7 @@ function renderDayView(){
     item.innerHTML = `
       <span class="day-habit-name">${habit.icon||""} ${habit.name}</span>
       <div class="day-toggle-group">
-        <button type="button" class="day-toggle-btn ${mark==='check'?'active-check':''}" data-key="${key}" data-mark="check">✓ Done</button>
-        <button type="button" class="day-toggle-btn ${mark==='x'?'active-x':''}" data-key="${key}" data-mark="x">✗ Missed</button>
-        <button type="button" class="day-toggle-btn ${mark==='dash'?'active-dash':''}" data-key="${key}" data-mark="dash">− Skip</button>
+        <button type="button" class="day-toggle-btn ${mark==='check'?'active-check':''}" data-key="${key}" data-mark="check">✓ تم</button>
       </div>
     `;
     list.appendChild(item);
@@ -1034,17 +1379,19 @@ function renderDayView(){
   list.querySelectorAll('.day-toggle-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const key = btn.dataset.key;
-      const newMark = btn.dataset.mark;
-      const current = state.marks[key] || "";
-      state.marks[key] = current === newMark ? "" : newMark;
+      const day = parseInt(key.split('_')[1], 10);
+      const wasPerfect = getDayPoints(day).perfect;
+      const current = normalizeMark(state.marks[key] || "");
+      state.marks[key] = current === "check" ? "" : "check";
       saveState();
+      celebrateIfNewlyPerfect(day, wasPerfect);
       renderDayView();
     });
   });
 
   document.getElementById('dayTotal').textContent = maxDay
-    ? `إجمالي نقاط اليوم: ${dayTotal}/${maxDay}`
-    : `إجمالي نقاط اليوم: ${dayTotal}`;
+    ? `إجمالي نقاط اليوم: ${toArabicDigits(`${maxDay}/${dayTotal}`)}`
+    : `إجمالي نقاط اليوم: ${toArabicDigits(dayTotal)}`;
 }
 
 function renderMonthSummary(){
@@ -1064,7 +1411,8 @@ function renderMonthSummary(){
     row.innerHTML = `
       <span class="habit-progress-name">${habit.icon||""} ${habit.name}</span>
       <div class="habit-progress-bar-wrap"><div class="habit-progress-bar" style="width:${pct}%;"></div></div>
-      <span class="habit-progress-pct">${doneCount}/${nDays}</span>
+      <span class="habit-progress-pct">${toArabicDigits(`${nDays}/${doneCount}`)}</span>
+      <span class="habit-progress-pct-box">${toArabicDigits(pct)}٪</span>
     `;
     list.appendChild(row);
   });
@@ -1081,8 +1429,8 @@ function renderMonthSummary(){
   totalRow.style.fontWeight = "bold";
   totalRow.style.fontSize = "1.1rem";
   totalRow.textContent = maxMonth
-    ? `إجمالي نقاط الشهر: ${monthTotal}/${maxMonth}`
-    : `إجمالي نقاط الشهر: ${monthTotal}`;
+    ? `إجمالي نقاط الشهر: ${toArabicDigits(`${maxMonth}/${monthTotal}`)}`
+    : `إجمالي نقاط الشهر: ${toArabicDigits(monthTotal)}`;
   list.appendChild(totalRow);
 }
 
@@ -1097,11 +1445,11 @@ document.getElementById('yearInput').addEventListener('change', () => {
 });
 
 document.getElementById('resetBtn').addEventListener('click', () => {
-  if(confirm("Clear this month's data?")){
+  if(confirm("مسح بيانات هذا الشهر؟")){
     const {year, month} = getCurrentYearMonth();
     localStorage.removeItem(storageKey(year, month));
     loadState();
-    showToast('Month cleared');
+    showToast('تم مسح الشهر');
   }
 });
 
@@ -1116,7 +1464,7 @@ document.getElementById('addHabitBtn').addEventListener('click', () => {
   document.getElementById('newHabitIcon').value = "";
   saveState();
   renderAll();
-  showToast('Habit added');
+  showToast('تمت إضافة العادة');
 });
 
 document.getElementById('exportBtn').addEventListener('click', () => {
@@ -1128,7 +1476,7 @@ document.getElementById('exportBtn').addEventListener('click', () => {
   a.download = `tracker_${year}_${String(month+1).padStart(2,'0')}.json`;
   a.click();
   URL.revokeObjectURL(url);
-  showToast('Exported');
+  showToast('تم التصدير');
 });
 
 document.getElementById('importBtn').addEventListener('click', () => {
@@ -1150,9 +1498,9 @@ document.getElementById('importFile').addEventListener('change', (e) => {
       weeklyBuiltFor = null;
       saveState();
       renderAll();
-      showToast('Imported');
+      showToast('تم الاستيراد');
     }catch(err){
-      alert('Invalid file');
+      alert('ملف غير صالح');
     }
   };
   reader.readAsText(file);
