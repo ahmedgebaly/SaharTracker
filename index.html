@@ -842,7 +842,7 @@ function getDayPoints(day){
 }
 
 function formatEarnedPossible(earned, possible){
-  return toArabicDigits(`${earned}/${possible}`);
+  return toArabicDigits(`${earned} / ${possible}`);
 }
 
 /** Self-tests: earned/possible and category subtotals across الصباح, الظهر, تطويري, قبل النوم */
@@ -1089,6 +1089,8 @@ let currentDay = new Date().getDate();
 let viewMode = "day";
 let weeklyBuiltFor = null;
 
+const VIEW_MODE_KEY = "tracker_view_mode";
+
 function storageKey(year, month){
   return `tracker_${year}_${String(month+1).padStart(2,'0')}`;
 }
@@ -1333,8 +1335,9 @@ function updateAppTitle(){
 }
 
 function setViewMode(mode){
-  viewMode = mode;
-  const isDay = mode === "day";
+  viewMode = mode === "month" ? "month" : "day";
+  try{ localStorage.setItem(VIEW_MODE_KEY, viewMode); }catch(e){}
+  const isDay = viewMode === "day";
   document.getElementById('dayView').classList.toggle('is-visible', isDay);
   document.getElementById('monthPanel').classList.toggle('is-visible', !isDay);
   document.getElementById('monthSummary').classList.toggle('is-visible', !isDay);
@@ -1348,6 +1351,14 @@ function setViewMode(mode){
     renderWeekly(true);
     renderMonthSummary();
   }
+}
+
+function getSavedViewMode(){
+  try{
+    const saved = localStorage.getItem(VIEW_MODE_KEY);
+    if(saved === "month" || saved === "day") return saved;
+  }catch(e){}
+  return "day";
 }
 
 function applyMarkToCell(td, key, mark){
@@ -1408,7 +1419,7 @@ function updatePointsRow(){
     td.textContent = possibleDayPoints
       ? formatEarnedPossible(earnedPoints, possibleDayPoints)
       : toArabicDigits(earnedPoints);
-    td.title = `مكتسب/ممكن: ${earnedPoints}/${possibleDayPoints}`;
+    td.title = `مكتسب/ممكن: ${earnedPoints} / ${possibleDayPoints}`;
   });
 }
 
@@ -1502,7 +1513,7 @@ function renderTable(){
     td.textContent = possibleDayPoints
       ? formatEarnedPossible(earnedPoints, possibleDayPoints)
       : toArabicDigits(earnedPoints);
-    td.title = `مكتسب/ممكن: ${earnedPoints}/${possibleDayPoints}`;
+    td.title = `مكتسب/ممكن: ${earnedPoints} / ${possibleDayPoints}`;
     if(new Date(year, month, d).getDay() === 5) td.classList.add('friday-col');
     if(d === todayDay) td.classList.add('today-col');
     pointsRow.appendChild(td);
@@ -1616,6 +1627,15 @@ function goToToday(){
   currentDay = now.getDate();
   loadState();
   setViewMode('day');
+}
+
+function initApp(){
+  const now = new Date();
+  document.getElementById('monthSelect').value = now.getMonth();
+  document.getElementById('yearInput').value = now.getFullYear();
+  currentDay = now.getDate();
+  loadState();
+  setViewMode(getSavedViewMode());
 }
 
 function openSettings(){
@@ -1750,7 +1770,7 @@ function renderMonthSummary(){
       <div class="habit-progress-bar-wrap" title="${toArabicDigits(doneCount)} من ${toArabicDigits(nDays)} يومًا (${toArabicDigits(pct)}٪)">
         <div class="habit-progress-bar" style="width:${pct}%;" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"></div>
       </div>
-      <span class="habit-progress-pct">${toArabicDigits(`${doneCount}/${nDays}`)}</span>
+      <span class="habit-progress-pct">${toArabicDigits(`${doneCount} / ${nDays}`)}</span>
       <span class="habit-progress-pct-box">${toArabicDigits(pct)}٪</span>
       ${streakBadgeHtml(hIdx)}
     `;
@@ -1892,7 +1912,7 @@ document.getElementById('goTodayBtn').addEventListener('click', goToToday);
 populateMonthSelect();
 runPointsSelfTests();
 runStreakSelfTests();
-goToToday();
+initApp();
 </script>
 
 </body>
