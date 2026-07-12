@@ -581,25 +581,29 @@
     z-index:300;
     overflow:hidden;
     display:none;
+    align-items:center;
+    justify-content:center;
   }
-  .celebration-overlay.is-show{display:block;}
+  .celebration-overlay.is-show{display:flex;}
   .celebration-banner{
-    position:absolute;
-    top:18%;
-    left:50%;
-    transform:translateX(-50%) scale(0.6);
+    position:relative;
     background:var(--green);
     color:#fff;
-    padding:14px 28px;
-    border-radius:16px;
-    font-size:1.15rem;
+    padding:22px 36px;
+    border-radius:18px;
+    font-size:clamp(1.5rem, 4.5vw, 2.4rem);
     font-weight:bold;
-    box-shadow:0 8px 28px rgba(0,0,0,0.25);
+    box-shadow:0 12px 36px rgba(0,0,0,0.28);
     opacity:0;
+    transform:scale(0.6);
     animation:celebrate-banner 2.4s ease forwards;
-    max-width:min(92vw, 420px);
+    max-width:min(92vw, 560px);
     text-align:center;
-    line-height:1.45;
+    line-height:1.5;
+  }
+  .celebration-banner.is-encourage{
+    background:#c48a1a;
+    color:#fffaf0;
   }
   .confetti-piece{
     position:absolute;
@@ -611,11 +615,11 @@
     animation:confetti-fall linear forwards;
   }
   @keyframes celebrate-banner{
-    0%{opacity:0;transform:translateX(-50%) scale(0.5) translateY(20px);}
-    15%{opacity:1;transform:translateX(-50%) scale(1.08) translateY(0);}
-    30%{transform:translateX(-50%) scale(1);}
-    75%{opacity:1;transform:translateX(-50%) scale(1);}
-    100%{opacity:0;transform:translateX(-50%) scale(0.95) translateY(-10px);}
+    0%{opacity:0;transform:scale(0.5);}
+    15%{opacity:1;transform:scale(1.1);}
+    30%{transform:scale(1);}
+    75%{opacity:1;transform:scale(1);}
+    100%{opacity:0;transform:scale(0.96);}
   }
   @keyframes confetti-fall{
     0%{transform:translate3d(0,0,0) rotate(0deg);opacity:1;}
@@ -993,41 +997,52 @@ function randomCelebrationMessage(){
   return CELEBRATION_MESSAGES[Math.floor(Math.random() * CELEBRATION_MESSAGES.length)];
 }
 
-function playCelebration(){
-  const message = randomCelebrationMessage();
+function playCenteredMessage(message, options = {}){
+  const emoji = options.emoji || "🎉";
+  const withConfetti = options.confetti !== false;
+  const encourage = !!options.encourage;
+  const text = `${emoji} ${message}`;
+
   if(window.matchMedia('(prefers-reduced-motion: reduce)').matches){
-    showToast(`🎉 ${message}`);
+    showToast(text);
     return;
   }
   const overlay = document.getElementById('celebrationOverlay');
   const banner = document.getElementById('celebrationBanner');
   if(!overlay || !banner) return;
 
-  banner.textContent = `🎉 ${message}`;
+  banner.textContent = text;
+  banner.classList.toggle('is-encourage', encourage);
   overlay.querySelectorAll('.confetti-piece').forEach(el => el.remove());
-  const colors = ['#4a7c3f','#e8c46b','#d9534f','#3a6fb5','#8fbf7a','#ff8a65','#ab47bc'];
-  for(let i = 0; i < 48; i++){
-    const piece = document.createElement('span');
-    piece.className = 'confetti-piece';
-    piece.style.left = `${Math.random() * 100}%`;
-    piece.style.background = colors[i % colors.length];
-    piece.style.animationDuration = `${1.6 + Math.random() * 1.4}s`;
-    piece.style.animationDelay = `${Math.random() * 0.35}s`;
-    piece.style.setProperty('--drift', `${(Math.random() * 160) - 80}px`);
-    piece.style.width = `${6 + Math.random() * 8}px`;
-    piece.style.height = `${8 + Math.random() * 10}px`;
-    overlay.appendChild(piece);
+  if(withConfetti){
+    const colors = ['#4a7c3f','#e8c46b','#d9534f','#3a6fb5','#8fbf7a','#ff8a65','#ab47bc'];
+    for(let i = 0; i < 48; i++){
+      const piece = document.createElement('span');
+      piece.className = 'confetti-piece';
+      piece.style.left = `${Math.random() * 100}%`;
+      piece.style.background = colors[i % colors.length];
+      piece.style.animationDuration = `${1.6 + Math.random() * 1.4}s`;
+      piece.style.animationDelay = `${Math.random() * 0.35}s`;
+      piece.style.setProperty('--drift', `${(Math.random() * 160) - 80}px`);
+      piece.style.width = `${6 + Math.random() * 8}px`;
+      piece.style.height = `${8 + Math.random() * 10}px`;
+      overlay.appendChild(piece);
+    }
   }
 
   banner.style.animation = 'none';
   void banner.offsetWidth;
   banner.style.animation = '';
   overlay.classList.add('is-show');
-  clearTimeout(playCelebration._t);
-  playCelebration._t = setTimeout(() => {
+  clearTimeout(playCenteredMessage._t);
+  playCenteredMessage._t = setTimeout(() => {
     overlay.classList.remove('is-show');
     overlay.querySelectorAll('.confetti-piece').forEach(el => el.remove());
   }, 5000);
+}
+
+function playCelebration(){
+  playCenteredMessage(randomCelebrationMessage(), { emoji: "🎉", confetti: true, encourage: false });
 }
 
 function celebrateIfNewlyPerfect(day, wasPerfect){
@@ -1053,18 +1068,22 @@ function randomHalfXMessage(){
 }
 
 function dayXRatio(day){
-  const n = state.habits.length;
-  if(!n) return 0;
+  let scored = 0;
   let xCount = 0;
-  state.habits.forEach((_, hIdx) => {
+  state.habits.forEach((h, hIdx) => {
+    if(habitPointValue(h) <= 0) return;
+    scored++;
     if(normalizeMark(state.marks[`${hIdx}_${day}`] || "") === "x") xCount++;
   });
-  return xCount / n;
+  if(!scored) return 0;
+  return xCount / scored;
 }
 
 function encourageIfHalfX(day, wasAtLeastHalf){
   if(wasAtLeastHalf) return;
-  if(dayXRatio(day) >= 0.5) showToast(`💛 ${randomHalfXMessage()}`);
+  if(dayXRatio(day) >= 0.5){
+    playCenteredMessage(randomHalfXMessage(), { emoji: "💛", confetti: false, encourage: true });
+  }
 }
 
 function syncHabitPointsFromDefaults(habits){
