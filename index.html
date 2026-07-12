@@ -1152,7 +1152,7 @@
     </button>
   </div>
   <button type="button" id="themeToggle" class="theme-toggle liquid-glass-lite" aria-pressed="false">وضع داكن</button>
-  <button type="button" id="settingsBtn" style="display: none;">الإعدادات</button>
+  <button type="button" id="settingsBtn" class="theme-toggle liquid-glass-lite" style="display: none;" aria-label="الإعدادات">⚙ الإعدادات</button>
 </div>
 
 <div class="day-view" id="dayView">
@@ -1506,8 +1506,13 @@ function playCenteredMessage(message, options = {}){
   }, 5000);
 }
 
+let lastCelebrationTime = 0;
+
 function playCelebration(){
-  playCenteredMessage(randomCelebrationMessage(), { emoji: "🎉", confetti: true, encourage: false });
+  const now = Date.now();
+  const withConfetti = now - lastCelebrationTime >= 1500;
+  if(withConfetti) lastCelebrationTime = now;
+  playCenteredMessage(randomCelebrationMessage(), { emoji: "🎉", confetti: withConfetti, encourage: false });
 }
 
 function celebrateIfNewlyPerfect(day, wasPerfect){
@@ -1579,7 +1584,7 @@ const THEME_KEY = "tracker_theme";
 function applyTheme(theme){
   const isDark = theme === "dark";
   document.documentElement.classList.toggle("theme-dark", isDark);
-  try{ localStorage.setItem(THEME_KEY, isDark ? "dark" : "light"); }catch(e){}
+  safeSetItem(THEME_KEY, isDark ? "dark" : "light");
   const btn = document.getElementById("themeToggle");
   if(btn){
     btn.setAttribute("aria-pressed", isDark ? "true" : "false");
@@ -1811,9 +1816,20 @@ function loadState(){
   renderAll();
 }
 
+function safeSetItem(key, value){
+  try{
+    localStorage.setItem(key, value);
+    return true;
+  }catch(err){
+    console.error(err);
+    showToast('تعذر حفظ البيانات - المساحة التخزينية ممتلئة');
+    return false;
+  }
+}
+
 function saveState(){
   const {year, month} = getCurrentYearMonth();
-  localStorage.setItem(storageKey(year, month), JSON.stringify(state));
+  safeSetItem(storageKey(year, month), JSON.stringify(state));
 }
 
 function renderAll(){
@@ -1841,7 +1857,7 @@ function updateAppTitle(){
 
 function setViewMode(mode){
   viewMode = mode === "month" ? "month" : "day";
-  try{ localStorage.setItem(VIEW_MODE_KEY, viewMode); }catch(e){}
+  safeSetItem(VIEW_MODE_KEY, viewMode);
   const isDay = viewMode === "day";
   document.getElementById('dayView').classList.toggle('is-visible', isDay);
   document.getElementById('monthPanel').classList.toggle('is-visible', !isDay);
@@ -1879,14 +1895,37 @@ function applyMarkToCell(td, key, mark){
     td.classList.add('today-col');
   }
   td.textContent = MARK_SYMBOL[mark] || "";
-  const habitName = state.habits[parseInt(key.split('_')[0], 10)]?.name || "عادة";
-  const day = key.split('_')[1];
+  const hIdx = parseInt(key.split('_')[0], 10);
+  const day = parseInt(key.split('_')[1], 10);
+  // Intensity thresholds: 1–2 light, 3–6 medium, 7+ full green (streak looking back within the month)
+  if(mark === "check"){
+    td.style.backgroundColor = heatDoneColorForStreak(getStreakIntensityAtDay(hIdx, day));
+  } else {
+    td.style.backgroundColor = "";
+  }
+  const habitName = state.habits[hIdx]?.name || "عادة";
   const {year, month} = getCurrentYearMonth();
   const status = MARK_LABEL[mark] || "غير محدد";
   const dateLabel = `${toArabicDigits(day)} ${MONTH_NAMES[month]}`;
   const tip = `${habitName} — ${dateLabel}: ${status}`;
   td.setAttribute('aria-label', tip);
   td.title = tip;
+}
+
+/** Consecutive checks walking backward from day within the current month only. */
+function getStreakIntensityAtDay(hIdx, day){
+  let streak = 0;
+  for(let d = day; d >= 1; d--){
+    if(normalizeMark(state.marks[`${hIdx}_${d}`] || "") !== "check") break;
+    streak++;
+  }
+  return streak;
+}
+
+function heatDoneColorForStreak(streak){
+  if(streak >= 7) return "rgba(74,124,63,0.9)";
+  if(streak >= 3) return "rgba(74,124,63,0.6)";
+  return "rgba(74,124,63,0.35)";
 }
 
 function cycleMark(key, td){
@@ -1898,6 +1937,13 @@ function cycleMark(key, td){
   const next = current === "" ? "check" : (current === "check" ? "x" : "");
   state.marks[key] = next;
   applyMarkToCell(td, key, next);
+  const habitRow = td.closest('tr');
+  if(habitRow){
+    habitRow.querySelectorAll('td.day-cell[data-key]').forEach(cell => {
+      const cellKey = cell.dataset.key;
+      applyMarkToCell(cell, cellKey, state.marks[cellKey] || "");
+    });
+  }
   updateLongestStreak(hIdx);
   saveState();
   updatePointsRow();
@@ -2298,7 +2344,7 @@ function renderMonthSummary(){
   totalRow.style.fontWeight = "bold";
   totalRow.style.fontSize = "1.1rem";
   totalRow.textContent = possibleMonthPoints
-    ? `نقاط الشهر (مكتسب/ممكن): ${formatEarnedPossible(earnedMonthPoints, possibleMonthPoints)}`
+    ? `نقاط الشهر: ${formatEarnedPossible(earnedMonthPoints, possibleMonthPoints)}`
     : `نقاط الشهر: ${toArabicDigits(earnedMonthPoints)}`;
   list.appendChild(totalRow);
 }
