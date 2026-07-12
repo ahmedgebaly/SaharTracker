@@ -159,28 +159,62 @@
     z-index:1;
   }
   th.habit-col{background:var(--gold);z-index:3;}
+  .habit-streak{
+    display:inline-block;
+    font-size:0.8rem;
+    font-weight:bold;
+    color:#b45309;
+    margin-inline-start:6px;
+    white-space:nowrap;
+  }
   .day-cell{
     cursor:pointer;
     font-size:1.1rem;
     user-select:none;
     min-width:32px;
-    transition:background 0.2s;
+    height:32px;
+    transition:background 0.2s, color 0.2s;
   }
-  .day-cell:hover{background:#f0e6c0;}
-  .day-cell.today-col{background:#fff3d6;}
+  .day-cell.heat-empty{
+    background:#ebedf0;
+    color:transparent;
+  }
+  .day-cell.heat-done{
+    background:#2d6a27;
+    color:#fff;
+    font-weight:bold;
+  }
+  .day-cell.heat-empty:hover{background:#d0d7de;}
+  .day-cell.heat-done:hover{background:#245820;}
+  .day-cell.today-col.heat-empty{
+    box-shadow:inset 0 0 0 2px var(--gold);
+  }
+  .day-cell.today-col.heat-done{
+    box-shadow:inset 0 0 0 2px #f0c14b;
+  }
   th.today-col{box-shadow:inset 0 -3px 0 var(--green);}
   .mark-check{color:#2e8b2e;font-weight:bold;}
+  .legend-swatch{
+    display:inline-block;
+    width:14px;height:14px;
+    border-radius:3px;
+    vertical-align:middle;
+  }
+  .legend-swatch.empty{background:#ebedf0;border:1px solid #d0d7de;}
+  .legend-swatch.done{background:#2d6a27;}
   .mark-x{color:var(--red);font-weight:bold;}
   .mark-dash{color:var(--blue);font-weight:bold;}
   .points-row td{background:#fff3d6;font-weight:bold;}
   th.friday-col,
   td.friday-col,
-  .day-cell.friday-col,
   .points-row td.friday-col{
     background:#e8e8e8;
   }
-  .day-cell.friday-col:hover{background:#dcdcdc;}
-  .day-cell.friday-col.today-col,
+  /* Friday/today must not override heatmap fills on day cells */
+  .day-cell.friday-col.heat-empty{background:#e0e0e0;}
+  .day-cell.friday-col.heat-done{background:#2d6a27;color:#fff;}
+  .day-cell.friday-col.heat-empty:hover{background:#d0d7de;}
+  .day-cell.friday-col.heat-done:hover{background:#245820;}
   .points-row td.friday-col.today-col{
     background:#e0e0e0;
   }
@@ -307,6 +341,12 @@
     font-weight:bold;
     font-size:1.05rem;
     flex:1;
+    transition:opacity 180ms ease, color 180ms ease;
+  }
+  .day-habit-item.is-complete .day-habit-name{
+    text-decoration:line-through;
+    opacity:0.65;
+    color:#5a5a4a;
   }
   .day-habit-cat{
     background:var(--lightgreen);
@@ -319,16 +359,18 @@
   .day-toggle-btn{
     padding:6px 14px;
     border-radius:var(--radius);
-    border:1px solid #ccc;
+    border:1px solid #8a8a8a;
     cursor:pointer;
     background:#fafafa;
+    color:#3a3a2a;
     font-size:0.9rem;
     font-weight:bold;
+    transition:background-color 180ms ease, color 180ms ease, border-color 180ms ease;
   }
   .day-toggle-btn.active-check{
-    background:#2e8b2e;
+    background:#1b5e20;
     color:#fff;
-    border-color:#2e8b2e;
+    border-color:#1b5e20;
   }
   .day-toggle-btn.active-x{
     background:var(--red);
@@ -392,8 +434,10 @@
   }
   .habit-progress-bar{
     height:100%;
+    min-width:0;
     background:var(--green);
-    transition:width 0.2s;
+    transition:width 0.2s ease;
+    border-radius:6px;
   }
   .habit-progress-pct{
     min-width:55px;
@@ -628,8 +672,8 @@
 <div class="month-panel" id="monthPanel">
   <div class="table-wrap">
     <div class="table-legend" aria-hidden="true">
-      <span class="mark-check">✓ تم</span>
-      <span>(فارغ = غير محدد)</span>
+      <span><span class="legend-swatch empty"></span> غير مكتمل</span>
+      <span><span class="legend-swatch done"></span> ✓ تم</span>
     </div>
     <table id="trackerTable">
       <thead>
@@ -742,12 +786,63 @@ function maxDayPoints(){
 }
 
 function getDayPoints(day){
-  let total = 0;
+  let earnedPoints = 0;
   state.habits.forEach((h, hIdx) => {
-    total += pointsForMark(h, state.marks[`${hIdx}_${day}`] || "");
+    earnedPoints += pointsForMark(h, state.marks[`${hIdx}_${day}`] || "");
   });
-  const max = maxDayPoints();
-  return { total, max, perfect: max > 0 && total >= max };
+  const possibleDayPoints = maxDayPoints();
+  return {
+    earnedPoints,
+    possibleDayPoints,
+    total: earnedPoints,
+    max: possibleDayPoints,
+    perfect: possibleDayPoints > 0 && earnedPoints >= possibleDayPoints
+  };
+}
+
+function formatEarnedPossible(earned, possible){
+  return toArabicDigits(`${earned}/${possible}`);
+}
+
+/** Self-tests: earned/possible and category subtotals across الصباح, الظهر, تطويري, قبل النوم */
+function runPointsSelfTests(){
+  const fixtureHabits = [
+    {name:"أ", cat:"الصباح", points:10},
+    {name:"ب", cat:"الظهر", points:10},
+    {name:"ج", cat:"تطويري", points:10},
+    {name:"د", cat:"قبل النوم", points:10},
+    {name:"هـ", cat:"قبل النوم", points:0}
+  ];
+  const fixtureMarks = {"0_1":"check", "1_1":"check", "2_1":"", "3_1":"check", "4_1":"check"};
+  const savedHabits = state.habits;
+  const savedMarks = state.marks;
+  state.habits = fixtureHabits;
+  state.marks = fixtureMarks;
+
+  const possibleDayPoints = maxDayPoints();
+  console.assert(possibleDayPoints === 40, "possibleDayPoints should be 40 (4×10 + 0)");
+
+  let earnedPoints = 0;
+  const byCat = {};
+  fixtureHabits.forEach((h, hIdx) => {
+    const pts = pointsForMark(h, fixtureMarks[`${hIdx}_1`] || "");
+    earnedPoints += pts;
+    byCat[h.cat] = (byCat[h.cat] || 0) + pts;
+  });
+  console.assert(earnedPoints === 30, "earnedPoints should be 30 (أ+ب+د)");
+  console.assert(byCat["الصباح"] === 10, "الصباح subtotal");
+  console.assert(byCat["الظهر"] === 10, "الظهر subtotal");
+  console.assert(byCat["تطويري"] === 0, "تطويري subtotal");
+  console.assert(byCat["قبل النوم"] === 10, "قبل النوم subtotal (د=10, هـ=0)");
+  const catSum = Object.values(byCat).reduce((a, b) => a + b, 0);
+  console.assert(catSum === earnedPoints, "category subtotals must equal day earned");
+
+  const day = getDayPoints(1);
+  console.assert(day.earnedPoints === earnedPoints && day.possibleDayPoints === possibleDayPoints,
+    "getDayPoints earned/possible mismatch");
+
+  state.habits = savedHabits;
+  state.marks = savedMarks;
 }
 
 const CELEBRATION_MESSAGES = [
@@ -913,7 +1008,8 @@ function syncHabitPointsFromDefaults(habits){
 let state = {
   habits: JSON.parse(JSON.stringify(DEFAULT_HABITS)),
   marks: {},
-  weekly: {}
+  weekly: {},
+  longestStreaks: {}
 };
 
 let currentDay = new Date().getDate();
@@ -926,6 +1022,115 @@ function storageKey(year, month){
 
 function daysInMonth(year, month){
   return new Date(year, month+1, 0).getDate();
+}
+
+function ensureLongestStreaks(){
+  if(!state.longestStreaks || typeof state.longestStreaks !== "object"){
+    state.longestStreaks = {};
+  }
+}
+
+function habitStreakKey(habit){
+  return habit?.name || "";
+}
+
+function getMarksSnapshot(year, month){
+  const cur = getCurrentYearMonth();
+  if(year === cur.year && month === cur.month){
+    return { marks: state.marks, habits: state.habits };
+  }
+  const raw = localStorage.getItem(storageKey(year, month));
+  if(!raw) return { marks: {}, habits: [] };
+  try{
+    const parsed = JSON.parse(raw);
+    return { marks: parsed.marks || {}, habits: parsed.habits || [] };
+  }catch(e){
+    return { marks: {}, habits: [] };
+  }
+}
+
+function isHabitCheckedOn(habitName, year, month, day){
+  const { marks, habits } = getMarksSnapshot(year, month);
+  const hIdx = habits.findIndex(h => h.name === habitName);
+  if(hIdx < 0) return false;
+  return normalizeMark(marks[`${hIdx}_${day}`] || "") === "check";
+}
+
+/** Consecutive completes walking backward from today; resets on any miss. */
+function getCurrentStreak(hIdx){
+  const habit = state.habits[hIdx];
+  if(!habit) return 0;
+  const name = habit.name;
+  const now = new Date();
+  let y = now.getFullYear();
+  let m = now.getMonth();
+  let d = now.getDate();
+  let streak = 0;
+  for(let i = 0; i < 400; i++){
+    if(!isHabitCheckedOn(name, y, m, d)) break;
+    streak++;
+    d -= 1;
+    if(d < 1){
+      m -= 1;
+      if(m < 0){ m = 11; y -= 1; }
+      d = daysInMonth(y, m);
+    }
+  }
+  return streak;
+}
+
+function getLongestStreakInMonth(hIdx){
+  const {year, month} = getCurrentYearMonth();
+  const nDays = daysInMonth(year, month);
+  let longest = 0;
+  let run = 0;
+  for(let d = 1; d <= nDays; d++){
+    if(normalizeMark(state.marks[`${hIdx}_${d}`] || "") === "check"){
+      run++;
+      if(run > longest) longest = run;
+    } else {
+      run = 0;
+    }
+  }
+  return longest;
+}
+
+function updateLongestStreak(hIdx){
+  ensureLongestStreaks();
+  const habit = state.habits[hIdx];
+  if(!habit) return;
+  const key = habitStreakKey(habit);
+  const stored = state.longestStreaks[key] || 0;
+  state.longestStreaks[key] = Math.max(stored, getCurrentStreak(hIdx), getLongestStreakInMonth(hIdx));
+}
+
+function getPersistedLongestStreak(hIdx){
+  ensureLongestStreaks();
+  const habit = state.habits[hIdx];
+  if(!habit) return 0;
+  const key = habitStreakKey(habit);
+  return Math.max(state.longestStreaks[key] || 0, getLongestStreakInMonth(hIdx), getCurrentStreak(hIdx));
+}
+
+function streakBadgeHtml(hIdx){
+  const n = getCurrentStreak(hIdx);
+  return `<span class="habit-streak" title="السلسلة الحالية: ${toArabicDigits(n)}">🔥 ${toArabicDigits(n)}</span>`;
+}
+
+function runStreakSelfTests(){
+  const savedHabits = state.habits;
+  const savedMarks = state.marks;
+  const savedLongest = state.longestStreaks;
+  state.habits = [{name:"اختبار سلسلة", cat:"الصباح", points:10}];
+  state.marks = {
+    "0_1":"check", "0_2":"check", "0_3":"",
+    "0_4":"check", "0_5":"check", "0_6":"check"
+  };
+  state.longestStreaks = {};
+  console.assert(getLongestStreakInMonth(0) === 3, "longest month streak should be 3");
+  state.habits = savedHabits;
+  state.marks = savedMarks;
+  state.longestStreaks = savedLongest;
 }
 
 function getCurrentYearMonth(){
@@ -989,12 +1194,14 @@ function loadState(){
       );
       state.marks = parsed.marks || {};
       state.weekly = parsed.weekly || {};
+      state.longestStreaks = parsed.longestStreaks || {};
     }catch(e){
-      state = {habits: JSON.parse(JSON.stringify(DEFAULT_HABITS)), marks:{}, weekly:{}};
+      state = {habits: JSON.parse(JSON.stringify(DEFAULT_HABITS)), marks:{}, weekly:{}, longestStreaks:{}};
     }
   } else {
-    state = {habits: JSON.parse(JSON.stringify(DEFAULT_HABITS)), marks:{}, weekly:{}};
+    state = {habits: JSON.parse(JSON.stringify(DEFAULT_HABITS)), marks:{}, weekly:{}, longestStreaks:{}};
   }
+  ensureLongestStreaks();
   weeklyBuiltFor = null;
   renderAll();
 }
@@ -1044,7 +1251,8 @@ function setViewMode(mode){
 
 function applyMarkToCell(td, key, mark){
   mark = normalizeMark(mark);
-  td.className = "day-cell " + (MARK_CLASS[mark] || "");
+  const heatClass = mark === "check" ? "heat-done" : "heat-empty";
+  td.className = `day-cell ${heatClass}`;
   if(td.dataset.friday === "1") td.classList.add('friday-col');
   if(td.classList.contains('today-col') || td.dataset.today === "1"){
     td.classList.add('today-col');
@@ -1052,37 +1260,52 @@ function applyMarkToCell(td, key, mark){
   td.textContent = MARK_SYMBOL[mark] || "";
   const habitName = state.habits[parseInt(key.split('_')[0], 10)]?.name || "عادة";
   const day = key.split('_')[1];
-  td.setAttribute('aria-label', `${habitName}، يوم ${toArabicDigits(day)}: ${MARK_LABEL[mark] || 'غير محدد'}`);
+  const {year, month} = getCurrentYearMonth();
+  const status = MARK_LABEL[mark] || "غير محدد";
+  const dateLabel = `${toArabicDigits(day)} ${MONTH_NAMES[month]}`;
+  const tip = `${habitName} — ${dateLabel}: ${status}`;
+  td.setAttribute('aria-label', tip);
+  td.title = tip;
 }
 
 function cycleMark(key, td){
   const day = parseInt(key.split('_')[1], 10);
+  const hIdx = parseInt(key.split('_')[0], 10);
   const wasPerfect = getDayPoints(day).perfect;
   const current = normalizeMark(state.marks[key] || "");
   const next = current === "check" ? "" : "check";
   state.marks[key] = next;
   applyMarkToCell(td, key, next);
+  updateLongestStreak(hIdx);
   saveState();
   updatePointsRow();
   updateWeeklyPoints();
-  if(viewMode === "month") renderMonthSummary();
+  if(viewMode === "month"){
+    renderMonthSummary();
+    const habit = state.habits[hIdx];
+    const habitCell = td.closest('tr')?.querySelector('.habit-cell');
+    if(habit && habitCell){
+      habitCell.innerHTML = `${habit.icon||""} ${habit.name} ${streakBadgeHtml(hIdx)}`.trim();
+    }
+  }
   celebrateIfNewlyPerfect(day, wasPerfect);
 }
 
 function updatePointsRow(){
   const row = document.getElementById('pointsRow');
   if(!row) return;
-  const {year, month} = getCurrentYearMonth();
-  const nDays = daysInMonth(year, month);
-  const maxDay = maxDayPoints();
+  const possibleDayPoints = maxDayPoints();
   const cells = row.querySelectorAll('td[data-day]');
   cells.forEach(td => {
     const d = parseInt(td.dataset.day, 10);
-    let total = 0;
+    let earnedPoints = 0;
     state.habits.forEach((h, hIdx) => {
-      total += pointsForMark(h, state.marks[`${hIdx}_${d}`] || "");
+      earnedPoints += pointsForMark(h, state.marks[`${hIdx}_${d}`] || "");
     });
-    td.textContent = maxDay ? toArabicDigits(`${maxDay}/${total}`) : toArabicDigits(total);
+    td.textContent = possibleDayPoints
+      ? formatEarnedPossible(earnedPoints, possibleDayPoints)
+      : toArabicDigits(earnedPoints);
+    td.title = `مكتسب/ممكن: ${earnedPoints}/${possibleDayPoints}`;
   });
 }
 
@@ -1127,7 +1350,7 @@ function renderTable(){
     const tr = document.createElement('tr');
     const tdHabit = document.createElement('td');
     tdHabit.className = "habit-cell";
-    tdHabit.textContent = `${habit.icon||""} ${habit.name}`.trim();
+    tdHabit.innerHTML = `${habit.icon||""} ${habit.name} ${streakBadgeHtml(hIdx)}`.trim();
     tr.appendChild(tdHabit);
 
     for(let d = 1; d <= nDays; d++){
@@ -1163,17 +1386,20 @@ function renderTable(){
   pointsRow.className = "points-row";
   pointsRow.id = "pointsRow";
   const tdLabel = document.createElement('td');
-  tdLabel.textContent = "النقاط اليومية";
+  tdLabel.textContent = "النقاط (مكتسب/ممكن)";
   pointsRow.appendChild(tdLabel);
-  const maxDay = maxDayPoints();
+  const possibleDayPoints = maxDayPoints();
   for(let d = 1; d <= nDays; d++){
     const td = document.createElement('td');
     td.dataset.day = d;
-    let total = 0;
+    let earnedPoints = 0;
     state.habits.forEach((h, hIdx) => {
-      total += pointsForMark(h, state.marks[`${hIdx}_${d}`] || "");
+      earnedPoints += pointsForMark(h, state.marks[`${hIdx}_${d}`] || "");
     });
-    td.textContent = maxDay ? toArabicDigits(`${maxDay}/${total}`) : toArabicDigits(total);
+    td.textContent = possibleDayPoints
+      ? formatEarnedPossible(earnedPoints, possibleDayPoints)
+      : toArabicDigits(earnedPoints);
+    td.title = `مكتسب/ممكن: ${earnedPoints}/${possibleDayPoints}`;
     if(new Date(year, month, d).getDay() === 5) td.classList.add('friday-col');
     if(d === todayDay) td.classList.add('today-col');
     pointsRow.appendChild(td);
@@ -1345,8 +1571,8 @@ function renderDayView(){
 
   const list = document.getElementById('dayHabitList');
   list.innerHTML = "";
-  let dayTotal = 0;
-  const maxDay = maxDayPoints();
+  let earnedPoints = 0;
+  const possibleDayPoints = maxDayPoints();
 
   let lastCat = null;
   state.habits.forEach((habit, hIdx) => {
@@ -1363,14 +1589,16 @@ function renderDayView(){
 
     const key = `${hIdx}_${currentDay}`;
     const mark = normalizeMark(state.marks[key] || "");
-    dayTotal += pointsForMark(habit, mark);
+    earnedPoints += pointsForMark(habit, mark);
 
     const item = document.createElement('div');
-    item.className = "day-habit-item";
+    item.className = "day-habit-item" + (mark === "check" ? " is-complete" : "");
+    const btnLabel = mark === "check" ? "✓ تم" : "تم";
     item.innerHTML = `
       <span class="day-habit-name">${habit.icon||""} ${habit.name}</span>
+      ${streakBadgeHtml(hIdx)}
       <div class="day-toggle-group">
-        <button type="button" class="day-toggle-btn ${mark==='check'?'active-check':''}" data-key="${key}" data-mark="check">✓ تم</button>
+        <button type="button" class="day-toggle-btn ${mark==='check'?'active-check':''}" data-key="${key}" data-mark="check" aria-pressed="${mark==='check'}">${btnLabel}</button>
       </div>
     `;
     list.appendChild(item);
@@ -1379,19 +1607,22 @@ function renderDayView(){
   list.querySelectorAll('.day-toggle-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const key = btn.dataset.key;
-      const day = parseInt(key.split('_')[1], 10);
+      const parts = key.split('_');
+      const hIdx = parseInt(parts[0], 10);
+      const day = parseInt(parts[1], 10);
       const wasPerfect = getDayPoints(day).perfect;
       const current = normalizeMark(state.marks[key] || "");
       state.marks[key] = current === "check" ? "" : "check";
+      updateLongestStreak(hIdx);
       saveState();
       celebrateIfNewlyPerfect(day, wasPerfect);
       renderDayView();
     });
   });
 
-  document.getElementById('dayTotal').textContent = maxDay
-    ? `إجمالي نقاط اليوم: ${toArabicDigits(`${maxDay}/${dayTotal}`)}`
-    : `إجمالي نقاط اليوم: ${toArabicDigits(dayTotal)}`;
+  document.getElementById('dayTotal').textContent = possibleDayPoints
+    ? `نقاط اليوم (مكتسب/ممكن): ${formatEarnedPossible(earnedPoints, possibleDayPoints)}`
+    : `نقاط اليوم: ${toArabicDigits(earnedPoints)}`;
 }
 
 function renderMonthSummary(){
@@ -1410,27 +1641,30 @@ function renderMonthSummary(){
     row.className = "habit-progress-row";
     row.innerHTML = `
       <span class="habit-progress-name">${habit.icon||""} ${habit.name}</span>
-      <div class="habit-progress-bar-wrap"><div class="habit-progress-bar" style="width:${pct}%;"></div></div>
-      <span class="habit-progress-pct">${toArabicDigits(`${nDays}/${doneCount}`)}</span>
+      <div class="habit-progress-bar-wrap" title="${toArabicDigits(doneCount)} من ${toArabicDigits(nDays)} يومًا (${toArabicDigits(pct)}٪)">
+        <div class="habit-progress-bar" style="width:${pct}%;" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"></div>
+      </div>
+      <span class="habit-progress-pct">${toArabicDigits(`${doneCount}/${nDays}`)}</span>
       <span class="habit-progress-pct-box">${toArabicDigits(pct)}٪</span>
+      ${streakBadgeHtml(hIdx)}
     `;
     list.appendChild(row);
   });
 
-  let monthTotal = 0;
+  let earnedMonthPoints = 0;
   for(let d = 1; d <= nDays; d++){
     state.habits.forEach((h, hIdx) => {
-      monthTotal += pointsForMark(h, state.marks[`${hIdx}_${d}`] || "");
+      earnedMonthPoints += pointsForMark(h, state.marks[`${hIdx}_${d}`] || "");
     });
   }
-  const maxMonth = maxDayPoints() * nDays;
+  const possibleMonthPoints = maxDayPoints() * nDays;
   const totalRow = document.createElement('div');
   totalRow.style.marginTop = "15px";
   totalRow.style.fontWeight = "bold";
   totalRow.style.fontSize = "1.1rem";
-  totalRow.textContent = maxMonth
-    ? `إجمالي نقاط الشهر: ${toArabicDigits(`${maxMonth}/${monthTotal}`)}`
-    : `إجمالي نقاط الشهر: ${toArabicDigits(monthTotal)}`;
+  totalRow.textContent = possibleMonthPoints
+    ? `نقاط الشهر (مكتسب/ممكن): ${formatEarnedPossible(earnedMonthPoints, possibleMonthPoints)}`
+    : `نقاط الشهر: ${toArabicDigits(earnedMonthPoints)}`;
   list.appendChild(totalRow);
 }
 
@@ -1493,7 +1727,8 @@ document.getElementById('importFile').addEventListener('change', (e) => {
       state = {
         habits: syncHabitPointsFromDefaults(parsed.habits || JSON.parse(JSON.stringify(DEFAULT_HABITS))),
         marks: parsed.marks || {},
-        weekly: parsed.weekly || {}
+        weekly: parsed.weekly || {},
+        longestStreaks: parsed.longestStreaks || {}
       };
       weeklyBuiltFor = null;
       saveState();
@@ -1537,6 +1772,8 @@ document.getElementById('daySelect').addEventListener('change', (e) => {
 document.getElementById('goTodayBtn').addEventListener('click', goToToday);
 
 populateMonthSelect();
+runPointsSelfTests();
+runStreakSelfTests();
 goToToday();
 </script>
 
