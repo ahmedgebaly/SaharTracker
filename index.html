@@ -569,16 +569,38 @@ const DEFAULT_HABITS = [
   {name:"إعادة الضبط", cat:"قبل النوم", icon:"📋"},
   {name:"اللمسة الواحدة", cat:"قبل النوم", icon:"🤲"},
   {name:"تدوين وامتنان", cat:"قبل النوم", icon:"📝"},
-  {name:"رعاية ذاتية", cat:"قبل النوم", icon:"🧖"},
-  {name:"إرسال تودو", cat:"قبل النوم", icon:"📤"},
-  {name:"صلوات", cat:"قبل النوم", icon:"🕌"}
+  {name:"رعاية ذاتية", cat:"قبل النوم", icon:"🧖", points:0},
+  {name:"إرسال تودو", cat:"قبل النوم", icon:"📤", points:0},
+  {name:"صلوات", cat:"قبل النوم", icon:"🕌", points:0}
 ];
 
 const MARK_CYCLE = ["", "check", "x", "dash"];
 const MARK_SYMBOL = {"":"", "check":"✓", "x":"✗", "dash":"−"};
 const MARK_CLASS = {"":"", "check":"mark-check", "x":"mark-x", "dash":"mark-dash"};
-const MARK_POINTS = {"":0, "check":10, "x":0, "dash":0};
 const MARK_LABEL = {"":"unset", "check":"Done", "x":"Missed", "dash":"Skip"};
+
+function habitPointValue(habit){
+  return habit.points ?? 10;
+}
+
+function pointsForMark(habit, mark){
+  return mark === "check" ? habitPointValue(habit) : 0;
+}
+
+function maxDayPoints(){
+  return state.habits.reduce((sum, h) => sum + habitPointValue(h), 0);
+}
+
+function syncHabitPointsFromDefaults(habits){
+  const byName = {};
+  DEFAULT_HABITS.forEach(h => {
+    if(Object.prototype.hasOwnProperty.call(h, "points")) byName[h.name] = h.points;
+  });
+  habits.forEach(h => {
+    if(Object.prototype.hasOwnProperty.call(byName, h.name)) h.points = byName[h.name];
+  });
+  return habits;
+}
 
 let state = {
   habits: JSON.parse(JSON.stringify(DEFAULT_HABITS)),
@@ -642,7 +664,9 @@ function loadState(){
   if(raw){
     try{
       const parsed = JSON.parse(raw);
-      state.habits = parsed.habits && parsed.habits.length ? parsed.habits : JSON.parse(JSON.stringify(DEFAULT_HABITS));
+      state.habits = syncHabitPointsFromDefaults(
+        parsed.habits && parsed.habits.length ? parsed.habits : JSON.parse(JSON.stringify(DEFAULT_HABITS))
+      );
       state.marks = parsed.marks || {};
       state.weekly = parsed.weekly || {};
     }catch(e){
@@ -717,13 +741,13 @@ function updatePointsRow(){
   if(!row) return;
   const {year, month} = getCurrentYearMonth();
   const nDays = daysInMonth(year, month);
-  const maxDay = state.habits.length * 10;
+  const maxDay = maxDayPoints();
   const cells = row.querySelectorAll('td[data-day]');
   cells.forEach(td => {
     const d = parseInt(td.dataset.day, 10);
     let total = 0;
     state.habits.forEach((h, hIdx) => {
-      total += MARK_POINTS[state.marks[`${hIdx}_${d}`] || ""];
+      total += pointsForMark(h, state.marks[`${hIdx}_${d}`] || "");
     });
     td.textContent = maxDay ? `${total}/${maxDay}` : total;
   });
@@ -802,13 +826,13 @@ function renderTable(){
   const tdLabel = document.createElement('td');
   tdLabel.textContent = "النقاط اليومية";
   pointsRow.appendChild(tdLabel);
-  const maxDay = state.habits.length * 10;
+  const maxDay = maxDayPoints();
   for(let d = 1; d <= nDays; d++){
     const td = document.createElement('td');
     td.dataset.day = d;
     let total = 0;
     state.habits.forEach((h, hIdx) => {
-      total += MARK_POINTS[state.marks[`${hIdx}_${d}`] || ""];
+      total += pointsForMark(h, state.marks[`${hIdx}_${d}`] || "");
     });
     td.textContent = maxDay ? `${total}/${maxDay}` : total;
     if(d === todayDay) td.classList.add('today-col');
@@ -827,7 +851,7 @@ function updateWeeklyPoints(){
     let weekPoints = 0;
     for(let d = startDay; d <= endDay; d++){
       state.habits.forEach((h, hIdx) => {
-        weekPoints += MARK_POINTS[state.marks[`${hIdx}_${d}`] || ""];
+        weekPoints += pointsForMark(h, state.marks[`${hIdx}_${d}`] || "");
       });
     }
     const badge = document.querySelector(`[data-week-points="${w}"]`);
@@ -858,7 +882,7 @@ function renderWeekly(forceRebuild){
     let weekPoints = 0;
     for(let d = startDay; d <= endDay; d++){
       state.habits.forEach((h, hIdx) => {
-        weekPoints += MARK_POINTS[state.marks[`${hIdx}_${d}`] || ""];
+        weekPoints += pointsForMark(h, state.marks[`${hIdx}_${d}`] || "");
       });
     }
     const card = document.createElement('div');
@@ -975,7 +999,7 @@ function renderDayView(){
   const list = document.getElementById('dayHabitList');
   list.innerHTML = "";
   let dayTotal = 0;
-  const maxDay = state.habits.length * 10;
+  const maxDay = maxDayPoints();
 
   let lastCat = null;
   state.habits.forEach((habit, hIdx) => {
@@ -992,7 +1016,7 @@ function renderDayView(){
 
     const key = `${hIdx}_${currentDay}`;
     const mark = state.marks[key] || "";
-    dayTotal += MARK_POINTS[mark];
+    dayTotal += pointsForMark(habit, mark);
 
     const item = document.createElement('div');
     item.className = "day-habit-item";
@@ -1048,10 +1072,10 @@ function renderMonthSummary(){
   let monthTotal = 0;
   for(let d = 1; d <= nDays; d++){
     state.habits.forEach((h, hIdx) => {
-      monthTotal += MARK_POINTS[state.marks[`${hIdx}_${d}`] || ""];
+      monthTotal += pointsForMark(h, state.marks[`${hIdx}_${d}`] || "");
     });
   }
-  const maxMonth = state.habits.length * nDays * 10;
+  const maxMonth = maxDayPoints() * nDays;
   const totalRow = document.createElement('div');
   totalRow.style.marginTop = "15px";
   totalRow.style.fontWeight = "bold";
@@ -1119,7 +1143,7 @@ document.getElementById('importFile').addEventListener('change', (e) => {
     try{
       const parsed = JSON.parse(ev.target.result);
       state = {
-        habits: parsed.habits || JSON.parse(JSON.stringify(DEFAULT_HABITS)),
+        habits: syncHabitPointsFromDefaults(parsed.habits || JSON.parse(JSON.stringify(DEFAULT_HABITS))),
         marks: parsed.marks || {},
         weekly: parsed.weekly || {}
       };
