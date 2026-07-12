@@ -184,13 +184,22 @@
     color:#fff;
     font-weight:bold;
   }
+  .day-cell.heat-missed{
+    background:#f5d0d0;
+    color:var(--red);
+    font-weight:bold;
+  }
   .day-cell.heat-empty:hover{background:#d0d7de;}
   .day-cell.heat-done:hover{background:#245820;}
+  .day-cell.heat-missed:hover{background:#eeb8b8;}
   .day-cell.today-col.heat-empty{
     box-shadow:inset 0 0 0 2px var(--gold);
   }
   .day-cell.today-col.heat-done{
     box-shadow:inset 0 0 0 2px #f0c14b;
+  }
+  .day-cell.today-col.heat-missed{
+    box-shadow:inset 0 0 0 2px var(--gold);
   }
   th.today-col{box-shadow:inset 0 -3px 0 var(--green);}
   .mark-check{color:#2e8b2e;font-weight:bold;}
@@ -202,6 +211,7 @@
   }
   .legend-swatch.empty{background:#ebedf0;border:1px solid #d0d7de;}
   .legend-swatch.done{background:#2d6a27;}
+  .legend-swatch.missed{background:#f5d0d0;border:1px solid var(--red);color:var(--red);font-size:10px;line-height:14px;text-align:center;font-weight:bold;}
   .mark-x{color:var(--red);font-weight:bold;}
   .mark-dash{color:var(--blue);font-weight:bold;}
   .points-row td{background:#fff3d6;font-weight:bold;}
@@ -213,8 +223,10 @@
   /* Friday/today must not override heatmap fills on day cells */
   .day-cell.friday-col.heat-empty{background:#e0e0e0;}
   .day-cell.friday-col.heat-done{background:#2d6a27;color:#fff;}
+  .day-cell.friday-col.heat-missed{background:#f5d0d0;color:var(--red);}
   .day-cell.friday-col.heat-empty:hover{background:#d0d7de;}
   .day-cell.friday-col.heat-done:hover{background:#245820;}
+  .day-cell.friday-col.heat-missed:hover{background:#eeb8b8;}
   .points-row td.friday-col.today-col{
     background:#e0e0e0;
   }
@@ -321,6 +333,19 @@
     text-align:center;
     flex:1;
   }
+  .month-nav-bar{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+    justify-content:center;
+  }
+  .month-nav-label{
+    font-weight:bold;
+    color:var(--text-dark);
+    min-width:7rem;
+    text-align:center;
+  }
   .day-habit-list{
     display:flex;
     flex-direction:column;
@@ -355,9 +380,14 @@
     padding:3px 8px;
     border-radius:6px;
   }
-  .day-toggle-group{display:flex;gap:6px;flex-wrap:wrap;}
+  .day-toggle-group{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:6px;
+    min-width:min(100%, 280px);
+  }
   .day-toggle-btn{
-    padding:6px 14px;
+    padding:6px 10px;
     border-radius:var(--radius);
     border:1px solid #8a8a8a;
     cursor:pointer;
@@ -365,6 +395,9 @@
     color:#3a3a2a;
     font-size:0.9rem;
     font-weight:bold;
+    width:100%;
+    text-align:center;
+    white-space:nowrap;
     transition:background-color 180ms ease, color 180ms ease, border-color 180ms ease;
   }
   .day-toggle-btn.active-check{
@@ -651,7 +684,12 @@
 <div class="top-bar">
   <button class="view-btn primary" id="showDayBtn" type="button">عرض اليوم</button>
   <button class="view-btn" id="showMonthBtn" type="button">عرض الشهر</button>
-  <button type="button" id="settingsBtn">الإعدادات</button>
+  <div class="month-nav-bar" aria-label="التنقل بين الشهور">
+    <button type="button" id="prevMonthBtn">الشهر السابق</button>
+    <span id="monthNavTitle" class="month-nav-label"></span>
+    <button type="button" id="nextMonthBtn">الشهر التالي</button>
+  </div>
+  <button type="button" id="settingsBtn" style="display: none;">الإعدادات</button>
 </div>
 
 <div class="day-view" id="dayView">
@@ -672,8 +710,9 @@
 <div class="month-panel" id="monthPanel">
   <div class="table-wrap">
     <div class="table-legend" aria-hidden="true">
-      <span><span class="legend-swatch empty"></span> غير مكتمل</span>
+      <span><span class="legend-swatch empty"></span> غير محدد</span>
       <span><span class="legend-swatch done"></span> ✓ تم</span>
+      <span><span class="legend-swatch missed">✗</span> غير مكتمل</span>
     </div>
     <table id="trackerTable">
       <thead>
@@ -694,7 +733,7 @@
 </div>
 
 <div class="footer-note" id="footerNote">
-  في عرض اليوم استخدم الزر. في عرض الشهر اضغط على الخلية للتبديل بين ✓ والفارغ. تُحفظ بياناتك تلقائيًا محليًا لكل شهر على حدة.
+  في عرض اليوم استخدم أزرار ✓ تم و ✗ غير مكتمل. في عرض الشهر اضغط على الخلية للتبديل بين الفارغ و ✓ و ✗. تُحفظ بياناتك تلقائيًا محليًا لكل شهر على حدة.
 </div>
 
 <div class="modal-overlay" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
@@ -765,12 +804,14 @@ const DEFAULT_HABITS = [
   {name:"صلوات", cat:"قبل النوم", icon:"🕌", points:0}
 ];
 
-const MARK_SYMBOL = {"":"", "check":"✓"};
-const MARK_CLASS = {"":"", "check":"mark-check"};
-const MARK_LABEL = {"":"غير محدد", "check":"تم"};
+const MARK_SYMBOL = {"":"", "check":"✓", "x":"✗"};
+const MARK_CLASS = {"":"", "check":"mark-check", "x":"mark-x"};
+const MARK_LABEL = {"":"غير محدد", "check":"تم", "x":"غير مكتمل"};
 
 function normalizeMark(mark){
-  return mark === "check" ? "check" : "";
+  if(mark === "check") return "check";
+  if(mark === "x") return "x";
+  return "";
 }
 
 function habitPointValue(habit){
@@ -994,6 +1035,38 @@ function celebrateIfNewlyPerfect(day, wasPerfect){
   if(getDayPoints(day).perfect) playCelebration();
 }
 
+const HALF_X_ENCOURAGEMENT_MESSAGES = [
+  "لا بأس، الغد فرصة جديدة",
+  "أنت ما زلت على الطريق، استمر",
+  "يوم صعب لا يلغي تقدمك",
+  "خذ نفسًا… وابدأ من جديد بلطف",
+  "كل محاولة تقربك من عادتك",
+  "التقصير اليوم لا يعني الفشل",
+  "أحسنت الاعتراف بما لم يكتمل",
+  "غدًا تستطيع أن تُكمِل أكثر",
+  "رحمتك بنفسك جزء من الانضباط",
+  "خطوة صغيرة غدًا تصنع فرقًا"
+];
+
+function randomHalfXMessage(){
+  return HALF_X_ENCOURAGEMENT_MESSAGES[Math.floor(Math.random() * HALF_X_ENCOURAGEMENT_MESSAGES.length)];
+}
+
+function dayXRatio(day){
+  const n = state.habits.length;
+  if(!n) return 0;
+  let xCount = 0;
+  state.habits.forEach((_, hIdx) => {
+    if(normalizeMark(state.marks[`${hIdx}_${day}`] || "") === "x") xCount++;
+  });
+  return xCount / n;
+}
+
+function encourageIfHalfX(day, wasAtLeastHalf){
+  if(wasAtLeastHalf) return;
+  if(dayXRatio(day) >= 0.5) showToast(`💛 ${randomHalfXMessage()}`);
+}
+
 function syncHabitPointsFromDefaults(habits){
   const byName = {};
   DEFAULT_HABITS.forEach(h => {
@@ -1139,6 +1212,31 @@ function getCurrentYearMonth(){
   return {year, month};
 }
 
+function setYearMonth(year, month, day){
+  while(month < 0){ month += 12; year -= 1; }
+  while(month > 11){ month -= 12; year += 1; }
+  document.getElementById('yearInput').value = year;
+  document.getElementById('monthSelect').value = month;
+  const nDays = daysInMonth(year, month);
+  if(day != null) currentDay = day;
+  if(currentDay > nDays) currentDay = nDays;
+  if(currentDay < 1) currentDay = 1;
+  loadState();
+}
+
+function shiftMonth(delta){
+  const {year, month} = getCurrentYearMonth();
+  let y = year;
+  let m = month + delta;
+  while(m < 0){ m += 12; y -= 1; }
+  while(m > 11){ m -= 12; y += 1; }
+  const now = new Date();
+  const day = (viewMode === "day" && y === now.getFullYear() && m === now.getMonth())
+    ? now.getDate()
+    : 1;
+  setYearMonth(y, m, day);
+}
+
 function showToast(msg){
   const el = document.getElementById('toast');
   el.textContent = msg;
@@ -1225,10 +1323,13 @@ function renderAll(){
 
 function updateAppTitle(){
   const {year, month} = getCurrentYearMonth();
+  const label = `${MONTH_NAMES[month]} ${toArabicDigits(year)}`;
   const title = document.getElementById('appTitle');
   if(title){
-    title.textContent = `📅 متابع شهر ${MONTH_NAMES[month]} ${toArabicDigits(year)}`;
+    title.textContent = `📅 متابع شهر ${label}`;
   }
+  const monthNav = document.getElementById('monthNavTitle');
+  if(monthNav) monthNav.textContent = label;
 }
 
 function setViewMode(mode){
@@ -1251,7 +1352,7 @@ function setViewMode(mode){
 
 function applyMarkToCell(td, key, mark){
   mark = normalizeMark(mark);
-  const heatClass = mark === "check" ? "heat-done" : "heat-empty";
+  const heatClass = mark === "check" ? "heat-done" : (mark === "x" ? "heat-missed" : "heat-empty");
   td.className = `day-cell ${heatClass}`;
   if(td.dataset.friday === "1") td.classList.add('friday-col');
   if(td.classList.contains('today-col') || td.dataset.today === "1"){
@@ -1272,8 +1373,9 @@ function cycleMark(key, td){
   const day = parseInt(key.split('_')[1], 10);
   const hIdx = parseInt(key.split('_')[0], 10);
   const wasPerfect = getDayPoints(day).perfect;
+  const wasAtLeastHalfX = dayXRatio(day) >= 0.5;
   const current = normalizeMark(state.marks[key] || "");
-  const next = current === "check" ? "" : "check";
+  const next = current === "" ? "check" : (current === "check" ? "x" : "");
   state.marks[key] = next;
   applyMarkToCell(td, key, next);
   updateLongestStreak(hIdx);
@@ -1289,6 +1391,7 @@ function cycleMark(key, td){
     }
   }
   celebrateIfNewlyPerfect(day, wasPerfect);
+  encourageIfHalfX(day, wasAtLeastHalfX);
 }
 
 function updatePointsRow(){
@@ -1593,12 +1696,12 @@ function renderDayView(){
 
     const item = document.createElement('div');
     item.className = "day-habit-item" + (mark === "check" ? " is-complete" : "");
-    const btnLabel = mark === "check" ? "✓ تم" : "تم";
     item.innerHTML = `
       <span class="day-habit-name">${habit.icon||""} ${habit.name}</span>
       ${streakBadgeHtml(hIdx)}
       <div class="day-toggle-group">
-        <button type="button" class="day-toggle-btn ${mark==='check'?'active-check':''}" data-key="${key}" data-mark="check" aria-pressed="${mark==='check'}">${btnLabel}</button>
+        <button type="button" class="day-toggle-btn ${mark==='check'?'active-check':''}" data-key="${key}" data-mark="check" aria-pressed="${mark==='check'}">✓ تم</button>
+        <button type="button" class="day-toggle-btn ${mark==='x'?'active-x':''}" data-key="${key}" data-mark="x" aria-pressed="${mark==='x'}">✗ غير مكتمل</button>
       </div>
     `;
     list.appendChild(item);
@@ -1607,15 +1710,18 @@ function renderDayView(){
   list.querySelectorAll('.day-toggle-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const key = btn.dataset.key;
+      const newMark = btn.dataset.mark;
       const parts = key.split('_');
       const hIdx = parseInt(parts[0], 10);
       const day = parseInt(parts[1], 10);
       const wasPerfect = getDayPoints(day).perfect;
+      const wasAtLeastHalfX = dayXRatio(day) >= 0.5;
       const current = normalizeMark(state.marks[key] || "");
-      state.marks[key] = current === "check" ? "" : "check";
+      state.marks[key] = current === newMark ? "" : newMark;
       updateLongestStreak(hIdx);
       saveState();
       celebrateIfNewlyPerfect(day, wasPerfect);
+      encourageIfHalfX(day, wasAtLeastHalfX);
       renderDayView();
     });
   });
@@ -1753,16 +1859,28 @@ document.addEventListener('keydown', (e) => {
 
 document.getElementById('showDayBtn').addEventListener('click', () => setViewMode('day'));
 document.getElementById('showMonthBtn').addEventListener('click', () => setViewMode('month'));
+document.getElementById('prevMonthBtn').addEventListener('click', () => shiftMonth(-1));
+document.getElementById('nextMonthBtn').addEventListener('click', () => shiftMonth(1));
 document.getElementById('prevDayBtn').addEventListener('click', () => {
   currentDay -= 1;
-  const {year, month} = getCurrentYearMonth();
-  if(currentDay < 1) currentDay = daysInMonth(year, month);
+  if(currentDay < 1){
+    const {year, month} = getCurrentYearMonth();
+    let y = year, m = month - 1;
+    if(m < 0){ m = 11; y -= 1; }
+    setYearMonth(y, m, daysInMonth(y, m));
+    return;
+  }
   renderDayView();
 });
 document.getElementById('nextDayBtn').addEventListener('click', () => {
   const {year, month} = getCurrentYearMonth();
   currentDay += 1;
-  if(currentDay > daysInMonth(year, month)) currentDay = 1;
+  if(currentDay > daysInMonth(year, month)){
+    let y = year, m = month + 1;
+    if(m > 11){ m = 0; y += 1; }
+    setYearMonth(y, m, 1);
+    return;
+  }
   renderDayView();
 });
 document.getElementById('daySelect').addEventListener('change', (e) => {
